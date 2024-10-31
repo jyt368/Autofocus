@@ -1,3 +1,4 @@
+#Our method
 We developed an autofocus method with threshold denoising to enhance the stability, which utilised the combination of Laplacian function and variance operator as the focus evaluation function. 
 Several modifications have been made to improve the autofocus performance based on the traditional mountain climbing search algorithm that move the stage back and forth. 
 To extend the focus range, linear curve fitting is used to determine the correct search direction, allowing the autofocus method to deal with initial positions that are up to 1000 µm out of focus. 
