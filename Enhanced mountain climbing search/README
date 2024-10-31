@@ -3,4 +3,3 @@ Several modifications have been made to improve the autofocus performance based 
 To extend the focus range, linear curve fitting is used to determine the correct search direction, allowing the autofocus method to deal with initial positions that are up to 1000 µm out of focus. 
 Additionally, two-step curve fitting and NIQE final focus evaluation are used to make the mountain climbing search stride adaptive and to make the final focus position prediction more precise. 
 Our autofocus method outperformed two other typical autofocus methods JAF and OughtaFocus, regarding accuracy and speed. 
-
