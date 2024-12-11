@@ -1,3 +1,5 @@
 # Autofocus
 Autofocus has been widely used in biological imaging to free users from tedious and repetitive works. However, due to background noise and different combination of sample types and staining method, the stability and reproducability of autofocus method is a main challenge. Therefore, we developed a fast and accurate autofocus method based on enhanced mountain climbing search algorithm which can be broadly used in different senarios. 
 ![image](https://github.com/user-attachments/assets/5a6414de-0683-47d8-858c-c218a69c45bc)
+
+To evaluate our method's performance, we compared our method with JAF (H&P) and OughtaFocus, which is integrated in Micro-manager software (https://github.com/micro-manager/micro-manager/tree/6a17971c3c61a1d04722c539b5003784b477bf74). The source code is added here as reference. JAF (H&P) is based on mountain climbing search. The search stride size and number of search should be predefined, which makes it hard to be applied to situations that the initial position range is unknown. OughtaFocus is based on Brent's algorithm, which shows faster speed but limited a accuracy and search range. 
