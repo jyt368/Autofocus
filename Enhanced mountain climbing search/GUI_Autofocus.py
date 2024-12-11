@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 import time
 from pycromanager import Core
-from Autofocus_widefield_final import StageController,autofocus, calculate_niqe
+from Autofocus_widefield import StageController,autofocus, calculate_niqe
 import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
