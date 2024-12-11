@@ -6,7 +6,6 @@ from Autofocus_widefield_final import StageController,autofocus, calculate_niqe
 import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
-# from pycromanager import Bridge
 
 # if "ok" button is clicked
 def on_button_click():
@@ -109,8 +108,6 @@ bt_ok = Button(window, text="Ok", command=on_button_click)
 bt_ok.grid(column=0, row=4)
 bt_cancel = Button(window, text="Cancel", command=cancel_button_click)
 bt_cancel.grid(column=1, row=4)
-
-
 
 # Run the GUI event loop
 window.mainloop()
