@@ -518,7 +518,7 @@ def denormalise_from_minus_one_to_one(x_normalized, x_min, x_max):
     x_original = (x_normalized + 1) / 2 * (x_max - x_min) + x_min
     return x_original
 
-def autofocus(focused_position, sharpness_values, pos, cs_threshold, max_poly_order=2):
+def autofocus(focused_position, sharpness_values, pos, max_poly_order=2):
     '''pos_array = np.array(pos)
     length= int(len(pos_array)/2)
     pos_shifted = (pos_array - int(pos_array[length]))*1000'''
@@ -572,26 +572,25 @@ if __name__ == '__main__':
         print('peak:', peak)
         
         # reference_image = cv2.imread("D:/jyt_dataset/defocus0.jpg", cv2.IMREAD_GRAYSCALE)
-        focused_position_sharp= autofocus(focused_position, sharpness_values, pos, cs_threshold=0.9975)
+        focused_position_sharp= autofocus(focused_position, sharpness_values, pos)
 
         '''if abs(focused_position_sharp)>1e4 or focused_position_sharp==0:
             focused_position_sharp=peak
             t=1'''
 
         print(f"The Sharpness focused position is {focused_position_sharp} nm.")
-        # print(f"The Sharpness focused position is {focused_position_cs} nm.")
         print("-----cost time:{:.4f}s----".format(time.time()-start))
 
         if t==0:
             asi_controller.move_stage(focused_position_sharp)
-            time.sleep(0.2)
+            time.sleep(0.1)
             image1= asi_controller.capture_image_and_save(focused_position_sharp, 100)
             niqe_score1 = calculate_niqe(image1)
-            time.sleep(0.1)
+            #time.sleep(0.1)
             asi_controller.move_stage(peak)
-            time.sleep(0.2)
-            image2= asi_controller.capture_image_and_save(peak, 100)
             time.sleep(0.1)
+            image2= asi_controller.capture_image_and_save(peak, 100)
+            #time.sleep(0.1)
             niqe_score2 = calculate_niqe(image2)
 
             if niqe_score1>niqe_score2:
@@ -608,7 +607,6 @@ if __name__ == '__main__':
         asi_controller.move_stage(focused_position)
 
         print(f"The Sharpness focused position is {focused_position} nm.")
-        # print(f"The Sharpness focused position is {focused_position_cs} nm.")
         print("-----cost time:{:.4f}s----".format(time.time()-start))
 
         asi_controller.disconnect()
