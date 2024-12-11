@@ -1,3 +1,0 @@
-The autofocus methods JAF (H&P) and OughtaFocus that we used for comparison is integrated in Micro-manager software (https://github.com/micro-manager/micro-manager/tree/6a17971c3c61a1d04722c539b5003784b477bf74). The source code is added here as reference.
-JAF (H&P) is based on mountain climbing search. The search stride size and number of search should be predefined, which makes it hard to be applied to situations that the initial position range is unknown. 
-OughtaFocus is based on Brent's algorithm, which shows faster speed but limited a accuracy and search range. 
