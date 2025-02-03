@@ -101,59 +101,6 @@ class StageController:
 
         return pixels
     
-    def capture_image_and_save1(self, position, exposure=100):
-        #self.core.set_property('Camera','Binning','2x2')
-        #self.core.set_property('Camera','Channel','mcherry')
-
-
-        if self.core.is_sequence_running(): 
-            self.core.stop_sequence_acquisition() # stop the camera
-            self.core.snap_image() #Take an image on the camera
-
-        self.core.set_exposure(exposure) # ref 9
-        # core.set_property('pco_camera','Acquiremode','External') # ref 9
-        # core.set_property('pco_camera','Triggermode','External') # ref 9
-        # core.set_property('Camera-1','AcquisitionMethod','Pooling')
-        # core.set_property('Camera-1','TriggerMode','Edge Trigger')
-
-        self.core.initialize_circular_buffer()
-        self.core.start_continuous_sequence_acquisition(0) # start the camera
-
-        self.core.snap_image() #Take an image on the camera
-        print('image taken')
-
-        while self.core.get_remaining_image_count() == 0: #wait until picture is available
-            # time.sleep(0.001)
-            time.sleep(0.001)
-        result = self.core.pop_next_tagged_image()
-
-        # Save image
-        self.core.snap_image()
-        # set interval for collecting imgs
-        time.sleep(0.01)
-        result = self.core.pop_next_tagged_image() 
-        # reshape if needed
-        pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
-
-
-        filename = f"image_position_{position}"
-        save_path = os.path.join(self.path, filename + '.tif')
-        # Save the image
-        tifffile.imwrite(save_path, pixels)
-        print(f"Image saved to: {save_path}")
-
-        #Stop the camera, and the last pics won't be saved
-        self.core.snap_image()
-        if self.core.is_sequence_running():
-            print('Still running')
-            self.core.stop_sequence_acquisition() 
-        self.core.snap_image()
-
-
-        print("Finished")
-        
-        return pixels
-    
     def move_stage(self, pos):
         z_axis_value = float(pos)    #unit micron, stage minimal movement unit: 0.01 micron, 10nm
         self.core.set_position(z_axis_value)
@@ -179,11 +126,11 @@ class StageController:
 
     def calculate_sharpness(self,image):
         
-        # Step 2: Laplace Gradient Operator
+        # Laplace Gradient Operator
         laplacian_image = cv2.Laplacian(image, cv2.CV_64F)
         laplacian_image_8bit = cv2.convertScaleAbs(laplacian_image)
 
-        # Step 3: Local Variance Information (FGLOG)
+        # Variance
         global_average_value = np.mean(laplacian_image)
         rows, cols = laplacian_image.shape
         fglog = np.sum((laplacian_image- global_average_value)**2) / (rows * cols)
@@ -203,18 +150,20 @@ class StageController:
         peak=0
         max_sharp=0
         small=0
-        prev_sharpness, snr, pos, slopes = [], [], [], [] # Initialize with a large value to avoid stopping prematurely
+        prev_sharpness, snr, pos, slopes = [], [], [], [] 
 
         # Set an absolute threshold
         abs_threshold_slope = abs_threshold_slope*step_size *1e3  #unit nm
         print('threshold_slope:', abs_threshold_slope)
-        
+
+        # Denoising, noise filtering
         current_image=self.capture_image_and_save(current_position)
         mean = np.mean(current_image)
         threshold = mean + 2*np.std(current_image)
         print('std:', np.std(current_image))
         print('threshold:', threshold)
 
+        # Search direction determination
         for _ in range(5):
             image = self.capture_image_and_save(current_position)
             denoised_image = cv2.subtract(image, threshold)
@@ -227,7 +176,7 @@ class StageController:
             prev_sharp = sharpness
             count+=1
 
-        
+        # Fit linear curve
         coefficients = np.polyfit(pos[-5:], prev_sharpness[-5:], 1)
         polynomial = np.poly1d(coefficients)
         derivative = polynomial.deriv()
@@ -246,7 +195,7 @@ class StageController:
         if direction==-1:
             prev_sharpness, pos, slopes=[],[],[]
 
-        # Start the hill climbing search
+        # Start the hill climbing search, two-step curve fitting
         while True:
             count+=1
         
@@ -276,7 +225,7 @@ class StageController:
             # Predict the second-order curve
             predicted_curve = np.dot(legendre_polynomials(extended_pos, 2), optimal_coef)
 
-            # Move to the focus position
+            # See the curve peak
             poly = Polynomial(optimal_coef)
             print('coef:', poly)
             peak_position = -poly.coef[1] / (2 * poly.coef[2])
@@ -289,7 +238,7 @@ class StageController:
             plt.legend()
             plt.show()'''
             
-            # adaptive slope threshold based on mean and standard deviation of the last 3 slopes
+            # Adaptive slope threshold based on slope thresholding
             avg_slope = np.mean(slopes[-3:])
             std_dev_slope = np.std(slopes[-3:])
                         
@@ -298,10 +247,10 @@ class StageController:
             if avg_slope<0:
                 threshold_slope=abs(avg_slope + std_dev_slope)
             else:
-                threshold_slope=abs(avg_slope - std_dev_slope)
+                threshold_slope=abs(avg_slope - std_dev_slope) # Dynamic threshold
 
 
-            # If the slope is small, switch to a smaller step size, 68% within 1 std, 95% within 2std, 99.7% within 3std.
+            # If the slope gets flatter, switch to a smaller step size
             if abs(slope)<= threshold_slope and abs(slope)<abs_threshold_slope and num<2: 
                 cons_num +=1
                 print('cons_num:', cons_num)
@@ -309,14 +258,14 @@ class StageController:
                     current_step_size /= 2
                     num+=1
                     cons_num=0
-                # Can change the step size to a even smaller value, large medium small
+                # Can change the step size to a even smaller value, large-> medium-> small
                 if cons_num >3 and num==1: 
                     current_step_size /= 2
                     num+=1
             else:
                 cons_num=0
 
-            # If the slope has changed direction, stop the search
+            # If three consecutive drop, stop the search
             if image_sharpness <= prev_sharp:
                 consecutive_count += 1
                 print('consecutive_count:', consecutive_count)
@@ -329,6 +278,7 @@ class StageController:
             prev_slope = slope
 
         print('count:',count)
+        # Data ready for second-step curve fitting
         if count >=10:
             pos=pos[-10:]
             prev_sharpness= prev_sharpness[-10:]
