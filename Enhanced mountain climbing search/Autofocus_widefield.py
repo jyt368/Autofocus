@@ -398,6 +398,7 @@ def autofocus(focused_position, sharpness_values, pos, max_poly_order=2):
     '''pos_array = np.array(pos)
     length= int(len(pos_array)/2)
     pos_shifted = (pos_array - int(pos_array[length]))*1000'''
+    # Legendre polynomials (-1,1), need normalisation
     pos_shifted, x_min, x_max = normalise_to_minus_one_to_one(pos)
     best_fit_curve, best_fit_coefficients, best_fit_order = iterative_curve_fitting(pos_shifted, sharpness_values, max_poly_order)
 
