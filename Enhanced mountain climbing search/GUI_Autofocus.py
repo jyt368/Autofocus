@@ -6,12 +6,13 @@ from Autofocus_widefield import StageController,autofocus, calculate_niqe
 import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
+from matplotlib.colors import LinearSegmentedColormap
 
 # if "ok" button is clicked
 def on_button_click():
     step_get=int(step.get())
     slope_thr= int(thres.get())
-    asi_controller = StageController(path='Z:/Users/yj368/Autofocus_repeat/Autofocus_repeat/micromanager search/round2/100 SMALL/our method/test')
+    asi_controller = StageController(path='.../our method/test')
     if asi_controller.connect_to_stage():
         # test move_stage--correct
         # asi_controller.move_stage(1000)  #unit nm
@@ -20,7 +21,6 @@ def on_button_click():
         focused_position, sharpness_values, pos, peak =asi_controller.defocus_hill_search(step_size=step_get, abs_threshold_slope=slope_thr)
         print('peak:', peak)
         
-        # reference_image = cv2.imread("D:/jyt_dataset/defocus0.jpg", cv2.IMREAD_GRAYSCALE)
         focused_position_sharp= autofocus(focused_position, sharpness_values, pos)
 
         if focused_position_sharp>1e5:
@@ -55,7 +55,10 @@ def on_button_click():
             core.snap_image()
             result = core.get_tagged_image()
             pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],))
-            plt.imshow(pixels, cmap='gray')
+            #plt.imshow(pixels, cmap='gray')
+            # If you want to display image in different color, here's an example
+            cmap_green = LinearSegmentedColormap.from_list('black_to_green', [(0, 0, 0), (0, 1, 0)])
+            plt.imshow(pixels, cmap=cmap_green)
             plt.show()
 
         asi_controller.disconnect()
@@ -71,7 +74,6 @@ window = Tk()
 window.title("Autofocus Parameter Configuration")
 # (width x height)
 window.geometry('512x256')
-# scaling the size
 window.tk.call('tk', 'scaling', 3.0)
 
 # Other parameters are defined via micromanager (exposure, channel, objective, etc.) 
@@ -86,7 +88,7 @@ step.grid(column=1, row=0)
 # Parameter2: Slope threshold 
 label_2 = Label(window, text="Threshold:")
 label_2.grid(column=0, row=1)
-# Default value is 1
+# Default value is 3, empirical
 thres_default = StringVar(value='3')
 thres = Spinbox(window, from_=1, to=10, textvariable=thres_default)
 thres.grid(column=1, row=1)
@@ -94,13 +96,13 @@ thres.grid(column=1, row=1)
 # Choose to display the final focused image or not
 label_3 = Label(window, text="Display:")
 label_3.grid(column=0, row=2)
-# Default value is 1
+# Default
 display_default=StringVar(value="Final Image Shown")
 display_options = ["Final Image Shown", "Final Image Not Shown"]
 display_opt = OptionMenu(window, display_default, *display_options)
 display_opt.grid(column=1, row=2)
 
-# Add a label to display messages
+# Add a label to display messages--> autofocus time and position output
 label = Label(window, text="", font=("Arial", 10))
 
 # Add buttons
