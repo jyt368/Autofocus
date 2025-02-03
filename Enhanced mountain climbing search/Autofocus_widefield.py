@@ -72,7 +72,7 @@ class StageController:
         else: # if no match is found
             return None # return None
     
-    def capture_image_and_save(self, position, exposure=10):
+    def capture_image_and_save(self, position, exposure=100):
         self.core.set_exposure(exposure)
 
         if self.core.is_sequence_running(): 
