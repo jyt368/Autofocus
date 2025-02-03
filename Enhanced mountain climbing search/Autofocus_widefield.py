@@ -176,53 +176,6 @@ class StageController:
         snr = signal / noise
         
         return snr[0]
-    
-    def denoise_image(self, image, kernel_size=1, sigma=1):
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Step 1: Neighborhood Averaging (Box Filter)
-        # image_8bit = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        neighborhood_averaging = cv2.boxFilter(image.astype(np.uint8), -1, (3, 3), normalize=True)
-        # Step 2: Bilateral Filtering for Edge Preservation
-        bilateral_denoised_image = cv2.bilateralFilter(image.astype(np.uint8), d=9, sigmaColor=75, sigmaSpace=75)
-        # Combine the results using a weighted sum for better noise reduction
-        combined_denoised_image = cv2.addWeighted(neighborhood_averaging, 0.5, bilateral_denoised_image, 0.5, 0)
-        # Step 3: Apply Gaussian filter for additional smoothing
-        denoised_image = cv2.GaussianBlur(combined_denoised_image, (kernel_size, kernel_size), sigma)
-        # Display the clean image
-        '''plt.imshow(denoised_image, cmap='gray')
-        plt.axis('off')
-        plt.title('Clean Image')
-        plt.show()'''
-        return denoised_image
-    
-    def process_image(self, observed_image, subtraction_value=0, saturation_factor= 0.035):
-        # Ensure both images are of the same size
-        # observed_image=self.denoise_image(observed_image)
-        # observed_image = cv2.resize(observed_image, (self.background_image.shape[1], self.background_image.shape[0]))
-
-        # get the shape of the background image
-        # height, width= self.background_image.shape
-
-        # resize the observed image to the same shape
-        # observed_image = cv2.resize(observed_image, (width, height))
-
-        # now you can subtract them
-        # subtracted_image = cv2.subtract(observed_image, self.background_image*2)
-        subtracted_image = cv2.subtract(observed_image, subtraction_value)
-    
-        # Enhance contrast with saturated pixels
-        enhanced_image = exposure.adjust_sigmoid(subtracted_image, gain=5, cutoff=saturation_factor)
-    
-        # Normalize the image
-        # normalized_image = cv2.normalize(enhanced_image, None, 0, 255, cv2.NORM_MINMAX)
-        '''plt.imshow(enhanced_image, cmap='gray')
-        plt.axis('off')
-        plt.title('Clean Image')
-        plt.show()'''
-
-    
-        return enhanced_image
 
     def calculate_sharpness(self,image):
         
@@ -237,35 +190,6 @@ class StageController:
         print('evaluation value:',fglog)
 
         return fglog
-    
-    def calculate_sharpness1(self,image):
-        # Step 1: Convert to grayscale if not already
-        if image.ndim == 3:
-            image_gray = color.rgb2gray(image)
-        else:
-            image_gray = image
-
-        # Step 2: Calculate the gradient magnitude using Sobel operator
-        gradient = np.sqrt(filters.sobel_h(image_gray)**2 + filters.sobel_v(image_gray)**2)
-        sharpness_metric_sobel = np.mean(gradient)
-        print('sharpness_metric_sobel:', sharpness_metric_sobel)
-
-        # Step 3: Calculate Laplacian
-        laplacian_image = cv2.Laplacian(image_gray, cv2.CV_64F)
-        global_average_value = np.mean(laplacian_image)
-        rows, cols = laplacian_image.shape
-        fglog = np.sum((laplacian_image - global_average_value)**2) / (rows * cols)
-
-        # Step 4: Combine or use the metrics as needed
-        # For example, you can return the average of the two metrics
-        std_sobel = np.std(gradient)
-        std_fglog = np.std(laplacian_image - global_average_value)
-        sharpness_metric_sobel_scaled = sharpness_metric_sobel / std_sobel
-        fglog_scaled = fglog / std_fglog
-        combined_sharpness = (sharpness_metric_sobel_scaled + fglog_scaled) / 2
-
-        return combined_sharpness
-    
 
     def defocus_hill_search(self, step_size=1, threshold=120, abs_threshold_slope=3):
         current_position = self.get_stage_position()
@@ -572,7 +496,6 @@ if __name__ == '__main__':
         focused_position, sharpness_values, pos, peak =asi_controller.defocus_hill_search()
         print('peak:', peak)
         
-        # reference_image = cv2.imread("D:/jyt_dataset/defocus0.jpg", cv2.IMREAD_GRAYSCALE)
         focused_position_sharp= autofocus(focused_position, sharpness_values, pos)
 
         if abs(focused_position_sharp)>1e4 or focused_position_sharp==0:
