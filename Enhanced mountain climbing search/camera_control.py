@@ -3,25 +3,25 @@ import re
 import os
 import cv2
 import numpy as np
-import nidaqmx  # microscope control
+import nidaqmx  
 from pycromanager import Core
 
-class Camera_snap:  # Replace with your actual class name
+class Camera_snap:  
     def __init__(self):
         self.doPort = None
-        self.exposure = 50  # ms
+        self.exposure = 100  # ms
         self.core = None
 
     def initialize_camera(self):
-        # Initialise Camera
+        # Initialise Camera, daq card
         self.doPort = nidaqmx.Task()
         self.core = Core() 
         doPortName = "Dev1/port0/line2"
         self.doPort.do_channels.add_do_chan(doPortName)
 
-        self.core.set_exposure(self.exposure)  # ref 9
-        self.core.set_property('pco_camera', 'Acquiremode', 'External')  # ref 9
-        self.core.set_property('pco_camera', 'Triggermode', 'External')  # ref 9
+        self.core.set_exposure(self.exposure) 
+        self.core.set_property('pco_camera', 'Acquiremode', 'External')  
+        self.core.set_property('pco_camera', 'Triggermode', 'External')  
 
         self.core.initialize_circular_buffer()
 
@@ -44,12 +44,12 @@ class Camera_snap:  # Replace with your actual class name
 
         # Save image
         self.snap()
-        # set interval for collecting imgs
+        # set interval for collecting imgs, needed to avoid motion blur while the stage is moving during the autofocus search
         time.sleep(0.1)
         result = self.core.pop_next_tagged_image()
         # reshape if needed
-        pixels = np.squeeze(np.reshape(result.pix, newshape=[-1, result.tags["Height"], result.tags["Width"]],))  # reshape image data
-        pixels = pixels.astype('float64')  # takes 2ms
+        pixels = np.squeeze(np.reshape(result.pix, newshape=[-1, result.tags["Height"], result.tags["Width"]],)) 
+        pixels = pixels.astype('float64')  
 
         # Save image
         filename = f"image_position_{position}"
