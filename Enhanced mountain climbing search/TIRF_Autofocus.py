@@ -33,14 +33,14 @@ from scipy.ndimage import generic_filter
 
 
 class StageController:
-    def __init__(self, path='Z:/Users/yj368/Autofocus_repeat/Autofocus_repeat/TIRF/5'):
+    def __init__(self, path='.../Autofocus_repeat/TIRF'):
         self.path=path
         self.core = Core()
 
     def connect_to_stage(self):
         print('Connecting to Stage Control')
         try:
-            # Assuming the device label for your stage in Micro-Manager is 'XYStage' and 'ZStage'
+            # Assuming the device label for your stage in Micro-Manager is 'XYStage' and 'ZStage', check your own device name
             self.core.set_focus_device('ZStage')
             print('Connection to Stage Control Complete')
             return True
@@ -64,13 +64,13 @@ class StageController:
 
     def parse_response_for_position(self, response):
         # This function would parse the response string and return the Z position.
-        # This is just an example, the actual parsing will depend on the format of the response.
+        # This is just an example, the actual parsing will depend on the format of the response. Mine is like "image_position_8087.33. tif".
         match = re.search(r':A (-?\d+)', response) # find the first occurrence of :A followed by one or more digits
         if match: # if a match is found
             z_position = match.group(1) # get the matched substring, which is the number after :A
             return float(z_position) # convert it to a float and return it
         else: # if no match is found
-            return None # return None
+            return None 
     
     def capture_image_and_save(self, position, exposure=100):
         self.core.set_exposure(exposure)
@@ -101,59 +101,6 @@ class StageController:
 
         return pixels
     
-    def capture_image_and_save1(self, position, exposure=100):
-        #self.core.set_property('Camera','Binning','2x2')
-        #self.core.set_property('Camera','Channel','mcherry')
-
-
-        if self.core.is_sequence_running(): 
-            self.core.stop_sequence_acquisition() # stop the camera
-            self.core.snap_image() #Take an image on the camera
-
-        self.core.set_exposure(exposure) # ref 9
-        # core.set_property('pco_camera','Acquiremode','External') # ref 9
-        # core.set_property('pco_camera','Triggermode','External') # ref 9
-        # core.set_property('Camera-1','AcquisitionMethod','Pooling')
-        # core.set_property('Camera-1','TriggerMode','Edge Trigger')
-
-        self.core.initialize_circular_buffer()
-        self.core.start_continuous_sequence_acquisition(0) # start the camera
-
-        self.core.snap_image() #Take an image on the camera
-        print('image taken')
-
-        while self.core.get_remaining_image_count() == 0: #wait until picture is available
-            # time.sleep(0.001)
-            time.sleep(0.001)
-        result = self.core.pop_next_tagged_image()
-
-        # Save image
-        self.core.snap_image()
-        # set interval for collecting imgs
-        time.sleep(0.01)
-        result = self.core.pop_next_tagged_image() 
-        # reshape if needed
-        pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
-
-
-        filename = f"image_position_{position}"
-        save_path = os.path.join(self.path, filename + '.tif')
-        # Save the image
-        tifffile.imwrite(save_path, pixels)
-        print(f"Image saved to: {save_path}")
-
-        #Stop the camera, and the last pics won't be saved
-        self.core.snap_image()
-        if self.core.is_sequence_running():
-            print('Still running')
-            self.core.stop_sequence_acquisition() 
-        self.core.snap_image()
-
-
-        print("Finished")
-        
-        return pixels
-    
     def move_stage(self, pos):
         z_axis_value = float(pos)    #unit micron, stage movement unit: micron
         self.core.set_position(z_axis_value)
@@ -176,95 +123,20 @@ class StageController:
         snr = signal / noise
         
         return snr[0]
-    
-    def denoise_image(self, image, kernel_size=1, sigma=1):
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Step 1: Neighborhood Averaging (Box Filter)
-        # image_8bit = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        neighborhood_averaging = cv2.boxFilter(image.astype(np.uint8), -1, (3, 3), normalize=True)
-        # Step 2: Bilateral Filtering for Edge Preservation
-        bilateral_denoised_image = cv2.bilateralFilter(image.astype(np.uint8), d=9, sigmaColor=75, sigmaSpace=75)
-        # Combine the results using a weighted sum for better noise reduction
-        combined_denoised_image = cv2.addWeighted(neighborhood_averaging, 0.5, bilateral_denoised_image, 0.5, 0)
-        # Step 3: Apply Gaussian filter for additional smoothing
-        denoised_image = cv2.GaussianBlur(combined_denoised_image, (kernel_size, kernel_size), sigma)
-        # Display the clean image
-        '''plt.imshow(denoised_image, cmap='gray')
-        plt.axis('off')
-        plt.title('Clean Image')
-        plt.show()'''
-        return denoised_image
-    
-    def process_image(self, observed_image, subtraction_value=0, saturation_factor= 0.035):
-        # Ensure both images are of the same size
-        # observed_image=self.denoise_image(observed_image)
-        # observed_image = cv2.resize(observed_image, (self.background_image.shape[1], self.background_image.shape[0]))
-
-        # get the shape of the background image
-        # height, width= self.background_image.shape
-
-        # resize the observed image to the same shape
-        # observed_image = cv2.resize(observed_image, (width, height))
-
-        # now you can subtract them
-        # subtracted_image = cv2.subtract(observed_image, self.background_image*2)
-        subtracted_image = cv2.subtract(observed_image, subtraction_value)
-    
-        # Enhance contrast with saturated pixels
-        enhanced_image = exposure.adjust_sigmoid(subtracted_image, gain=5, cutoff=saturation_factor)
-    
-        # Normalize the image
-        # normalized_image = cv2.normalize(enhanced_image, None, 0, 255, cv2.NORM_MINMAX)
-        '''plt.imshow(enhanced_image, cmap='gray')
-        plt.axis('off')
-        plt.title('Clean Image')
-        plt.show()'''
-
-    
-        return enhanced_image
 
     def calculate_sharpness(self,image):
         
-        # Step 2: Laplace Gradient Operator
+        # Laplace Gradient Operator
         laplacian_image = cv2.Laplacian(image, cv2.CV_64F)
         laplacian_image_8bit = cv2.convertScaleAbs(laplacian_image)
 
-        # Step 3: Local Variance Information (FGLOG)
+        # Variance
         global_average_value = np.mean(laplacian_image)
         rows, cols = laplacian_image.shape
         fglog = np.sum((laplacian_image- global_average_value)**2) / (rows * cols)
         print('evaluation value:',fglog)
 
         return fglog
-    
-    def calculate_sharpness1(self,image):
-        # Step 1: Convert to grayscale if not already
-        if image.ndim == 3:
-            image_gray = color.rgb2gray(image)
-        else:
-            image_gray = image
-
-        # Step 2: Calculate the gradient magnitude using Sobel operator
-        gradient = np.sqrt(filters.sobel_h(image_gray)**2 + filters.sobel_v(image_gray)**2)
-        sharpness_metric_sobel = np.mean(gradient)
-        print('sharpness_metric_sobel:', sharpness_metric_sobel)
-
-        # Step 3: Calculate Laplacian
-        laplacian_image = cv2.Laplacian(image_gray, cv2.CV_64F)
-        global_average_value = np.mean(laplacian_image)
-        rows, cols = laplacian_image.shape
-        fglog = np.sum((laplacian_image - global_average_value)**2) / (rows * cols)
-
-        # Step 4: Combine or use the metrics as needed
-        # For example, you can return the average of the two metrics
-        std_sobel = np.std(gradient)
-        std_fglog = np.std(laplacian_image - global_average_value)
-        sharpness_metric_sobel_scaled = sharpness_metric_sobel / std_sobel
-        fglog_scaled = fglog / std_fglog
-        combined_sharpness = (sharpness_metric_sobel_scaled + fglog_scaled) / 2
-
-        return combined_sharpness
     
 
     def defocus_hill_search(self, step_size=1, threshold=120, abs_threshold_slope=0.03):
@@ -279,14 +151,16 @@ class StageController:
         peak=0
         max_sharp=0
         small=0
-        prev_sharpness, snr, pos, slopes = [], [], [], [] # Initialize with a large value to avoid stopping prematurely
-        
+        prev_sharpness, snr, pos, slopes = [], [], [], [] 
+
+        # Noise filtering, denoising
         current_image=self.capture_image_and_save(current_position)
         mean = np.mean(current_image)
         threshold = mean
         print('std:', np.std(current_image))
         print('threshold:', threshold)
 
+        # Search direction determination
         for _ in range(5):
             image = self.capture_image_and_save(current_position)
             denoised_image = cv2.subtract(image, threshold)
@@ -299,7 +173,7 @@ class StageController:
             prev_sharp = sharpness
             count+=1
 
-        
+        # Fit linear curve
         coefficients = np.polyfit(pos[-5:], prev_sharpness[-5:], 1)
         polynomial = np.poly1d(coefficients)
         derivative = polynomial.deriv()
@@ -318,7 +192,7 @@ class StageController:
         if direction==-1:
             prev_sharpness, pos, slopes=[],[],[]
 
-        # Start the hill climbing search
+        # Start the mountain climbing search (two-step curve fitting)
         while True:
             count+=1
         
@@ -339,6 +213,7 @@ class StageController:
                 max_sharp=image_sharpness
                 peak= current_position
 
+            # First-step curve fitting
             curve, optimal_coef, derivative_curve = fit_quadratic_curve(pos[-10:], prev_sharpness[-10:])
             slope = derivative_curve[len(derivative_curve) - 1]
             print('slope:', slope)
@@ -348,7 +223,7 @@ class StageController:
             # Predict the second-order curve
             predicted_curve = np.dot(legendre_polynomials(extended_pos, 2), optimal_coef)
 
-            # Move to the focus position
+            # Visualise the curve peak
             poly = Polynomial(optimal_coef)
             print('coef:', poly)
             peak_position = -poly.coef[1] / (2 * poly.coef[2])
@@ -361,7 +236,7 @@ class StageController:
             plt.legend()
             plt.show()'''
             
-            # adaptive slope threshold based on mean and standard deviation of the last 3 slopes
+            # Adaptive slope threshold based on slope thresholding
             avg_slope = np.mean(slopes[-3:])
             std_dev_slope = np.std(slopes[-3:])
                         
@@ -370,12 +245,13 @@ class StageController:
             if avg_slope<0:
                 threshold_slope=abs(avg_slope + std_dev_slope)
             else:
-                threshold_slope=abs(avg_slope - std_dev_slope)
+                threshold_slope=abs(avg_slope - std_dev_slope) # dynamic slope threshold
+                
             # Set an absolute threshold
             abs_threshold_slope = abs_threshold_slope*step_size*1e3  #unit nm
 
 
-            # If the slope is small, switch to a smaller step size, 68% within 1 std, 95% within 2std, 99.7% within 3std.
+            # If the slope is plateauing, switch to a smaller step size
             if abs(slope)<= threshold_slope and abs(slope)<abs_threshold_slope and num<2: 
                 cons_num +=1
                 print('cons_num:', cons_num)
@@ -383,14 +259,14 @@ class StageController:
                     current_step_size /= 2
                     num+=1
                     cons_num=0
-                # Can change the step size to a even smaller value, large medium small
+                # Can change the step size to a even smaller value, large-> medium-> small
                 if cons_num >3 and num==1: 
                     current_step_size /= 2
                     num+=1
             else:
                 cons_num=0
 
-            # If the slope has changed direction, stop the search
+            # Search ends
             if image_sharpness <= prev_sharp:
                 consecutive_count += 1
                 print('consecutive_count:', consecutive_count)
@@ -403,6 +279,7 @@ class StageController:
             prev_slope = slope
 
         print('count:',count)
+        # Data for second-step curve fitting
         if count >=10:
             pos=pos[-10:]
             prev_sharpness= prev_sharpness[-10:]
@@ -522,6 +399,8 @@ def autofocus(focused_position, sharpness_values, pos, max_poly_order=2):
     '''pos_array = np.array(pos)
     length= int(len(pos_array)/2)
     pos_shifted = (pos_array - int(pos_array[length]))*1000'''
+    
+    # Legendre polynomials (-1,1), need normalisation
     pos_shifted, x_min, x_max = normalise_to_minus_one_to_one(pos)
     best_fit_curve, best_fit_coefficients, best_fit_order = iterative_curve_fitting(pos_shifted, sharpness_values, max_poly_order)
 
