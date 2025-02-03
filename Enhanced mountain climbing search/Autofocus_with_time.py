@@ -27,7 +27,7 @@ from scipy.ndimage import generic_filter
 
 
 class StageController:
-    def __init__(self, path='Z:/Users/yj368/Autofocus_repeat/time/100ms/11'):
+    def __init__(self, path='.../Autofocus_repeat/time/100ms/11'):
         self.path=path
         self.core = Core()
 
@@ -50,7 +50,7 @@ class StageController:
         print(f'Set Z position to {position_response} um')
         return current_position
     
-    #read the current position of the stage from the saved image file
+    # Read the current position of the stage from the saved image file
     def parse_response_for_position(self, response):
         match = re.search(r':A (-?\d+)', response) 
         if match: 
@@ -59,7 +59,7 @@ class StageController:
         else: 
             return None 
     
-    # camera capture
+    
     def capture_image_and_save(self, position, exposure=100):
         #self.core.set_property('Camera','Binning','2x2')
         #self.core.set_property('Camera','Channel','mcherry')
@@ -136,11 +136,11 @@ class StageController:
         small=0
         prev_sharpness, snr, pos, slopes = [], [], [], [] 
 
-        # set an absolute threshold for adaptive search stride
+        # Set an absolute threshold for adaptive search stride
         abs_threshold_slope = abs_threshold_slope*step_size *1e3  #unit nm
         print('threshold_slope:', abs_threshold_slope)
 
-        # get the denoising threshold from the initial image
+        # Get the denoising threshold from the initial image
         current_image=self.capture_image_and_save(current_position)
         mean = np.mean(current_image)
         threshold = mean + 2*np.std(current_image)
@@ -148,7 +148,7 @@ class StageController:
         print('threshold:', threshold)
 
 
-        # search direcrtion determination
+        # Search direcrtion determination
         initial_search_start_time = time.time()
 
         for _ in range(5):
@@ -163,7 +163,7 @@ class StageController:
             prev_sharp = sharpness
             count+=1
 
-        # curve fitting
+        # Linear curve fitting
         coefficients = np.polyfit(pos[-5:], prev_sharpness[-5:], 1)
         polynomial = np.poly1d(coefficients)
         derivative = polynomial.deriv()
@@ -179,7 +179,7 @@ class StageController:
         direction = 1 if slope > 0 else -1
         print(direction)
 
-        # calculate search direction determination time
+        # Calculate search direction determination time
         initial_search_end_time = time.time()
         search_direction_time= initial_search_end_time - initial_search_start_time
         print(f"Initial search direction determination time: {search_direction_time} seconds")
@@ -188,7 +188,7 @@ class StageController:
             prev_sharpness, pos, slopes=[],[],[]
 
 
-        # start the mountain climbing search
+        # Start the mountain climbing search, two-step curve fitting
         total_stage_movement_time = 0 
         total_camera_capture_time = 0
         while True:
@@ -239,7 +239,7 @@ class StageController:
             plt.legend()
             plt.show()'''
             
-            # adaptive slope threshold based on mean and standard deviation of the last 3 slopes
+            # Adaptive slope threshold
             avg_slope = np.mean(slopes[-3:])
             std_dev_slope = np.std(slopes[-3:])
                         
@@ -253,7 +253,7 @@ class StageController:
             # Also set an absolute threshold
             abs_threshold_slope = abs_threshold_slope*step_size*1e3  #unit nm
 
-            # if the slope is small, switch to a smaller step size
+            # if the slope is flatter, switch to a smaller step size
             if abs(slope)<= threshold_slope and abs(slope)<abs_threshold_slope and num<2: 
                 cons_num +=1
                 print('cons_num:', cons_num)
@@ -268,7 +268,7 @@ class StageController:
             else:
                 cons_num=0
 
-            # if the sharpness continue to drop, stop the search
+            # if the sharpness value continues to drop, stop the search
             if image_sharpness <= prev_sharp:
                 consecutive_count += 1
                 print('consecutive_count:', consecutive_count)
@@ -299,30 +299,30 @@ class StageController:
             print('Exception: Closing serial port: ' + str(e))
             
 
-# define Legendre polynomials
+# Define Legendre polynomials
 def legendre_polynomials(x, order):
     return np.polynomial.legendre.legval(x, np.eye(order + 1)).T
 
-# define the error function for least-squares optimization
+# Define the error function for least-squares optimization
 def error_function(coefficients, x, y, order):
     fitted_curve = np.dot(legendre_polynomials(x, order), coefficients)
     residuals = y - fitted_curve
     return residuals
 
-# for first step curve fitting
+# For first step curve fitting
 def fit_quadratic_curve(x, y, order=2):
     derivative_basis_functions=[]
-    # initial guess for coefficients
+    # Initial guess for coefficients
     initial_guess =  np.ones(order + 1)
     #print(x)
 
-    # fit the quadratic curve
+    # Fit the quadratic curve
     result = least_squares(error_function, initial_guess, args=(x, y, order))
 
-    # extract fitted coefficients
+    # Extract fitted coefficients
     fitted_coefficients = result.x
 
-    # error
+    # Error
     fitted_curve = np.dot(legendre_polynomials(x, order), fitted_coefficients)
     residuals = y - fitted_curve
     mean_squared_error = np.mean(residuals**2)
@@ -336,7 +336,7 @@ def fit_quadratic_curve(x, y, order=2):
     derivative_curve = np.dot(derivative_basis_functions, fitted_coefficients[1:])
     print(fitted_coefficients[1:])
 
-    # can plot the curve if needed
+    # Can plot the curve if needed
     '''plt.plot(x_shifted, derivative_curve, color='green', label='Derivative Curve')
 
     plt.xlabel("Defocus distance (um)")
@@ -346,24 +346,24 @@ def fit_quadratic_curve(x, y, order=2):
     
     return fitted_curve, fitted_coefficients, derivative_curve
 
-# second step curve fitting
+# Second step curve fitting
 def iterative_curve_fitting(x, y, max_order, accuracy_threshold=1e-10):
     order = 1  # Initial order
     coefficients = np.ones(order + 1)
     prev_error = np.inf
 
-    # max order avoid overfitting
+    # Max order avoid overfitting
     while order <= max_order:
         result = least_squares(error_function, coefficients, args=(x, y, order))
         fitted_coefficients = result.x
         fitted_curve = np.dot(legendre_polynomials(x, order), fitted_coefficients)
 
-        # error
+        # Error
         residuals = y - fitted_curve
         mean_squared_error = np.mean(residuals**2)
         print('Error:', abs(mean_squared_error))
         
-        # stop when the error reach the threshold or it starts to increase
+        # Stop when the error reach the threshold or it starts to increase
         if abs(mean_squared_error) < accuracy_threshold or abs(mean_squared_error) >= abs(prev_error):
             order -=1
             coefficients = np.ones(order+1)
@@ -378,7 +378,7 @@ def iterative_curve_fitting(x, y, max_order, accuracy_threshold=1e-10):
 
     return fitted_curve, fitted_coefficients, order
 
-# find the curve peak
+# Find the curve peak
 def find_poly_max(poly):
     neg_poly = lambda x: -poly(x)
 
@@ -387,13 +387,13 @@ def find_poly_max(poly):
 
     return max_x[0]
 
-# normalise because Legendre polynomials are defined in the range [-1, 1]
+# Normalise because Legendre polynomials are defined in the range [-1, 1]
 def normalise_to_minus_one_to_one(x):
     x_min, x_max = np.min(x), np.max(x)
     x_normalized = 2 * (x - x_min) / (x_max - x_min) - 1
     return x_normalized, x_min, x_max
 
-# denormalise to get the correct curve
+# Denormalise to get the correct curve
 def denormalise_from_minus_one_to_one(x_normalized, x_min, x_max):
     x_original = (x_normalized + 1) / 2 * (x_max - x_min) + x_min
     return x_original
