@@ -59,6 +59,9 @@ def on_button_click():
             # If you want to display image in different color, here's an example
             cmap_green = LinearSegmentedColormap.from_list('black_to_green', [(0, 0, 0), (0, 1, 0)])
             plt.imshow(pixels, cmap=cmap_green)
+            plt.axis('off')
+            plt.rcParams['toolbar']='None'
+            
             plt.show()
 
         asi_controller.disconnect()
