@@ -12,4 +12,4 @@ Additionally, when the stage is moving forward, z-stack images are captured by t
 A image restoration process is specifically designed for imaging thick samples and unevenly distributed organelles. It is hard to get all the structures into sharpest focus simultaneously when the spatial distribution of the structures are across multiple planes. So, even when we reached the optimal focus position, some structions in the image can still look blurry. To solve this problem, we modelled the point spread function (PSF) theoretically, generating 3D PSF for the following deconvolution process. The deconvolution we used here is Richardson–Lucy (RL) deconvolution.
 
 Finally, we created a user interface for easier access.
-![GUI](https://github.com/user-attachments/assets/0c898a4e-b75d-443d-8773-543a3eb18b3d)
+![image](https://github.com/user-attachments/assets/c9860537-29cd-41dc-86b9-2093dc9cb17a)
